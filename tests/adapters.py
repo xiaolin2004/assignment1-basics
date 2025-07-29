@@ -628,14 +628,7 @@ def run_train_bpe_self(
             break
         
         max_pair :tuple[bytes,bytes] = None
-        max_cnt  = -1
-        for pair,cnt in counts.items():
-            if cnt> max_cnt:
-                max_pair= pair
-                max_cnt = cnt
-            elif cnt==max_cnt:
-                if max_pair is None or pair > max_pair:
-                    max_pair = pair
+        max_pair = max(counts,key=lambda p:(counts[p],p))
                     
         merges.append(max_pair)
         a,b = max_pair
