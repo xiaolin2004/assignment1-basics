@@ -8,6 +8,9 @@ from jaxtyping import Float, Int
 import numpy.typing as npt
 import torch
 from torch import Tensor
+from multiprocessing import Pool
+import regex as re
+from collections import defaultdict
 
 
 def run_linear(
@@ -562,7 +565,7 @@ def get_tokenizer(
     raise NotImplementedError
 
 
-def run_train_bpe(
+def run_train_bpe_self(
     input_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
@@ -589,4 +592,159 @@ def run_train_bpe(
                 representing that <token1> was merged with <token2>.
                 Merges are ordered by order of creation.
     """
-    raise NotImplementedError
+    # 初始化词表
+    vocab = {i:bytes([i]) for i in range(256)}
+    # 将特殊token附加到词表末尾
+    for tok in special_tokens:
+        vocab[len(vocab)] = tok.encode("utf-8")
+        
+    num_processes = 8
+    with open(input_path,"rb") as f:
+        boundaries = find_chunk_boundaries(f,num_processes,"<|endoftext|>".encode("utf-8"))
+        
+    task_args = [(input_path,start,end,special_tokens) for start ,end in zip(boundaries[:-1],boundaries[1:])]
+    with Pool(processes=num_processes) as pool:
+        chunk_results = pool.map(process_chunk,task_args)
+    
+    merges : list[tuple[bytes,bytes]] = []
+    
+    # flat
+    pre_token_bytes: list[list[bytes]] = [token for chunk in chunk_results for token in chunk]
+    
+    # bytes pair freq counts
+    counts = defaultdict(int)
+    # 用于优化，记录 pair到pre_token_bytes索引的映射，在merge的重新生成阶段
+    pair_to_indices = defaultdict(set)
+    
+    for idx,token in enumerate(pre_token_bytes):
+        for i in range(len(token)-1):
+            pair = (token[i],token[i+1])
+            counts[pair] +=1
+            pair_to_indices[pair].add(idx)
+
+    idx = len(vocab)
+    while idx < vocab_size:
+        if not counts:
+            break
+        
+        max_pair :tuple[bytes,bytes] = None
+        max_cnt  = -1
+        for pair,cnt in counts.items():
+            if cnt> max_cnt:
+                max_pair= pair
+                max_cnt = cnt
+            elif cnt==max_cnt:
+                if max_pair is None or pair > max_pair:
+                    max_pair = pair
+                    
+        merges.append(max_pair)
+        a,b = max_pair
+        new_token = a+b
+        vocab[idx]  =new_token
+        idx+=1
+        
+        affected_indices = pair_to_indices[max_pair].copy()
+        for j in affected_indices:
+            token = pre_token_bytes[j]
+            # 清除所有pair统计
+            for i in range(len(token)-1):
+                old_pair = (token[i],token[i+1])
+                pair_to_indices[old_pair].discard(j)
+                counts[old_pair] -= 1
+                if counts[old_pair]==0:
+                    counts.pop(old_pair)
+                    pair_to_indices.pop(old_pair,None)
+            merged = []
+            i = 0
+            while i < len(token):
+                if i < len(token) - 1 and token[i] == a and token[i+1] == b:
+                    merged.append(new_token)
+                    i += 2
+                else:
+                    merged.append(token[i])
+                    i += 1
+            pre_token_bytes[j] = merged
+            
+            token = pre_token_bytes[j]
+            for i in range(len(token)-1):
+                pair = (token[i],token[i+1])
+                counts[pair] += 1
+                pair_to_indices[pair].add(j)
+    return vocab,merges
+        
+def process_chunk(args: tuple[str|os.PathLike,int,int,list[str]]) -> list[list[bytes]]:
+    input_path,start,end,special_tokens = args
+    with open(input_path,"rb") as f:
+       f.seek(start)
+       chunk = f.read(end-start).decode("utf-8",errors="ignore") 
+       
+    pattern = "|".join(re.escape(tok) for tok in special_tokens)
+    documents = re.split(pattern,chunk)
+    
+    pre_token_bytes :list[list[bytes]] = []
+    
+    PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
+    for doc in documents:
+        tokens = [match.group(0).encode("utf-8") for match in re.finditer(PAT,doc)]
+        for token in tokens:
+            token_bytes = [bytes([b]) for b in token]
+            pre_token_bytes.append(token_bytes)
+            
+    return pre_token_bytes
+
+def find_chunk_boundaries(
+    file: BinaryIO,
+    desired_num_chunks: int,
+    split_special_token: bytes,
+) -> list[int]:
+    """
+    Chunk the file into parts that can be counted independently.
+    May return fewer chunks if the boundaries end up overlapping.
+    """
+    assert isinstance(split_special_token, bytes), "Must represent special token as a bytestring"
+
+    # Get total file size in bytes
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+
+    chunk_size = file_size // desired_num_chunks
+
+    # Initial guesses for chunk boundary locations, uniformly spaced
+    # Chunks start on previous index, don't include last index
+    chunk_boundaries = [i * chunk_size for i in range(desired_num_chunks + 1)]
+    chunk_boundaries[-1] = file_size
+
+    mini_chunk_size = 4096  # Read ahead by 4k bytes at a time
+
+    for bi in range(1, len(chunk_boundaries) - 1):
+        initial_position = chunk_boundaries[bi]
+        file.seek(initial_position)  # Start at boundary guess
+        while True:
+            mini_chunk = file.read(mini_chunk_size)  # Read a mini chunk
+
+            # If EOF, this boundary should be at the end of the file
+            if mini_chunk == b"":
+                chunk_boundaries[bi] = file_size
+                break
+
+            # Find the special token in the mini chunk
+            found_at = mini_chunk.find(split_special_token)
+            if found_at != -1:
+                chunk_boundaries[bi] = initial_position + found_at
+                break
+            initial_position += mini_chunk_size
+
+    # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
+    return sorted(set(chunk_boundaries))
+
+def run_train_bpe(
+    input_path: str | os.PathLike,
+    vocab_size: int,
+    special_tokens: list[str],
+    **kwargs,
+) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
+    from cs336_basics.bpe_tokenizer import train_bpe
+    
+    # return train_bpe(input_path,vocab_size,special_tokens)
+    return run_train_bpe_self(input_path,vocab_size,special_tokens)
