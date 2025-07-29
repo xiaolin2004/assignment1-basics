@@ -9,7 +9,7 @@ class Tokenizer:
     priority_merge: dict[tuple[bytes,bytes],int]
     special_tokens: list[str] | None
     encoder_vocab:dict[bytes,int]
-    
+    decoder_vocab:dict[int,bytes]
     def __init__(
         self,
         vocab:dict[int, bytes],
@@ -18,9 +18,20 @@ class Tokenizer:
         self.vocab = vocab
         self.merges = merges
         self.special_tokens = special_tokens or []
+        self.encoder_vocab = {token_bytes: token_id for token_id, token_bytes in vocab.items()}
+        if special_tokens:
+            # Sort special tokens by length, descending.
+            # This ensures that longer tokens (like "<|eot|><|eot|>") are
+            # matched before shorter, overlapping tokens (like "<|eot|>").
+            self.special_tokens = sorted(special_tokens, key=len, reverse=True)
+        else:
+            self.special_tokens = []
+        self.decoder_vocab = vocab
+        # 将merges转换为 id -> (id,id)
+        self.priority_merge = {}
         for i,merge in enumerate(merges):
             self.priority_merge[merge] = i
-        self.encoder_vocab = {token_bytes: token_id for token_id, token_bytes in vocab.items()}
+
     @classmethod
     def from_files(
         cls,
@@ -36,7 +47,7 @@ class Tokenizer:
         if self.special_tokens:
             pattern = "|".join(re.escape(tok) for tok in self.special_tokens)
             pattern_for_capture = f"({pattern})"
-            chunks = re.split(pattern,text)
+            chunks = re.split(pattern_for_capture,text)
         else:
             chunks = [text]
         
@@ -64,7 +75,12 @@ class Tokenizer:
             yield from self.encode(text)
     
     def decode(self, ids: list[int]) -> str:
-        pass
+        if len(ids)==0:
+            return ""
+        # 还原为bytes
+        merged_tokens:list[bytes] = [self.decoder_vocab.get(id,b'') for id in ids]
+        return b"".join(merged_tokens).decode("utf-8",errors="replace")
+        
     
     
     def bpe_merge(self,token:list[bytes]):
