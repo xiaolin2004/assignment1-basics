@@ -4,11 +4,12 @@ from typing import BinaryIO
 from multiprocessing import Pool
 from collections import defaultdict
 
+
 def train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
     special_tokens: list[str],
-    num_processes: int = 8
+    num_processes: int = 8,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     """
     Trains a byte-level BPE (Byte Pair Encoding) tokenizer on the given input text file.
@@ -24,7 +25,7 @@ def train_bpe(
         all merged tokens produced during training, and the given special tokens).
 
     special_tokens : list[str]
-        A list of user-defined special tokens (e.g., ["<|endoftext|>", "<pad>"]) to be 
+        A list of user-defined special tokens (e.g., ["<|endoftext|>", "<pad>"]) to be
         added to the vocabulary. These tokens do NOT participate in merge decisions.
 
     num_processes : int, optional (default=8)
@@ -35,11 +36,11 @@ def train_bpe(
     Returns
     -------
     vocab : dict[int, bytes]
-        A dictionary mapping token IDs (integers) to token values (in bytes). The token 
+        A dictionary mapping token IDs (integers) to token values (in bytes). The token
         IDs should be assigned sequentially starting from 0.
 
     merges : list[tuple[bytes, bytes]]
-        A list of BPE merge operations, where each tuple represents two byte-level tokens 
+        A list of BPE merge operations, where each tuple represents two byte-level tokens
         that were merged together. The list should be ordered by merge time (first merge first).
     """
 
@@ -48,18 +49,24 @@ def train_bpe(
     for tok in special_tokens:
         vocab[len(vocab)] = tok.encode("utf-8")
 
-
     # 2. Pre-tokenization
     with open(input_path, "rb") as f:
-        boundaries = find_chunk_boundaries(f, num_processes, "<|endoftext|>".encode("utf-8"))
+        boundaries = find_chunk_boundaries(
+            f, num_processes, "<|endoftext|>".encode("utf-8")
+        )
 
-    task_args = [(input_path, start, end, special_tokens) for start, end in zip(boundaries[:-1], boundaries[1:])]
+    task_args = [
+        (input_path, start, end, special_tokens)
+        for start, end in zip(boundaries[:-1], boundaries[1:])
+    ]
     with Pool(processes=num_processes) as pool:
         chunk_results = pool.map(process_chunk, task_args)
-    
+
     # 3. Compute BPE merges
-    merges : list[tuple[bytes, bytes]] = []
-    pre_tokens_bytes: list[list[bytes]] = [token for chunk in chunk_results for token in chunk]
+    merges: list[tuple[bytes, bytes]] = []
+    pre_tokens_bytes: list[list[bytes]] = [
+        token for chunk in chunk_results for token in chunk
+    ]
     counts = defaultdict(int)
     pair_to_indices = defaultdict(set)
     for idx, token in enumerate(pre_tokens_bytes):
@@ -72,9 +79,9 @@ def train_bpe(
     while idx < vocab_size:
         if not counts:
             break
-            
+
         max_pair: tuple[bytes, bytes] = None
-        max_cnt= -1
+        max_cnt = -1
         for pair, cnt in counts.items():
             if cnt > max_cnt:
                 max_pair = pair
@@ -93,7 +100,7 @@ def train_bpe(
         for j in affected_indices:
             token = pre_tokens_bytes[j]
             for i in range(len(token) - 1):
-                old_pair = (token[i], token[i+1])
+                old_pair = (token[i], token[i + 1])
                 pair_to_indices[old_pair].discard(j)
                 counts[old_pair] -= 1
                 if counts[old_pair] == 0:
@@ -103,13 +110,13 @@ def train_bpe(
             merged = []
             i = 0
             while i < len(token):
-                if i < len(token) - 1 and token[i] == a and token[i+1]==b:
+                if i < len(token) - 1 and token[i] == a and token[i + 1] == b:
                     merged.append(new_token)
                     i += 2
                 else:
                     merged.append(token[i])
                     i += 1
-            pre_tokens_bytes[j]=merged
+            pre_tokens_bytes[j] = merged
 
             token = pre_tokens_bytes[j]
             for i in range(len(token) - 1):
@@ -119,18 +126,17 @@ def train_bpe(
 
     return vocab, merges
 
+
 def find_chunk_boundaries(
-    file: BinaryIO, 
-    desired_num_chunks: int, 
-    split_special_token: bytes
+    file: BinaryIO, desired_num_chunks: int, split_special_token: bytes
 ) -> list[int]:
     """
     Chunk the file into parts that can be counted independently.
     May return fewer chunks if the boundaries end up overlapping.
     """
-    assert isinstance(split_special_token, bytes), (
-        "Must represent special token as a bytestring"
-    )
+    assert isinstance(
+        split_special_token, bytes
+    ), "Must represent special token as a bytestring"
 
     # Get total file size in bytes
     file.seek(0, os.SEEK_END)
@@ -170,7 +176,6 @@ def find_chunk_boundaries(
     return sorted(set(chunk_boundaries))
 
 
-
 def process_chunk(args: tuple[str, int, int, list[str]]) -> list[list[bytes]]:
     input_path, start, end, special_tokens = args
     """
@@ -204,4 +209,3 @@ def process_chunk(args: tuple[str, int, int, list[str]]) -> list[list[bytes]]:
             pre_tokens_bytes.append(token_bytes)
 
     return pre_tokens_bytes
-

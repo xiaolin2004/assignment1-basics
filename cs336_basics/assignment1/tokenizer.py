@@ -4,21 +4,25 @@ import regex as re
 
 
 class Tokenizer:
-    vocab:dict[int, bytes]
+    vocab: dict[int, bytes]
     merges: list[tuple[bytes, bytes]]
-    priority_merge: dict[tuple[bytes,bytes],int]
+    priority_merge: dict[tuple[bytes, bytes], int]
     special_tokens: list[str] | None
-    encoder_vocab:dict[bytes,int]
-    decoder_vocab:dict[int,bytes]
+    encoder_vocab: dict[bytes, int]
+    decoder_vocab: dict[int, bytes]
+
     def __init__(
         self,
-        vocab:dict[int, bytes],
-        merges: list[tuple[bytes, bytes]], 
-        special_tokens: list[str] | None = None):
+        vocab: dict[int, bytes],
+        merges: list[tuple[bytes, bytes]],
+        special_tokens: list[str] | None = None,
+    ):
         self.vocab = vocab
         self.merges = merges
         self.special_tokens = special_tokens or []
-        self.encoder_vocab = {token_bytes: token_id for token_id, token_bytes in vocab.items()}
+        self.encoder_vocab = {
+            token_bytes: token_id for token_id, token_bytes in vocab.items()
+        }
         if special_tokens:
             # Sort special tokens by length, descending.
             # This ensures that longer tokens (like "<|eot|><|eot|>") are
@@ -29,7 +33,7 @@ class Tokenizer:
         self.decoder_vocab = vocab
         # 将merges转换为 id -> (id,id)
         self.priority_merge = {}
-        for i,merge in enumerate(merges):
+        for i, merge in enumerate(merges):
             self.priority_merge[merge] = i
 
     @classmethod
@@ -37,68 +41,70 @@ class Tokenizer:
         cls,
         vocab_filepath: str,
         merges_filepath: str,
-        special_tokens: list[str] | None = None):
+        special_tokens: list[str] | None = None,
+    ):
         pass
-    
-    
-    def encode(self,text: str) -> list[int]:
-        final_token_bytes:list[bytes] = []
+
+    def encode(self, text: str) -> list[int]:
+        final_token_bytes: list[bytes] = []
         # 使用sp_token分词
         if self.special_tokens:
             pattern = "|".join(re.escape(tok) for tok in self.special_tokens)
             pattern_for_capture = f"({pattern})"
-            chunks = re.split(pattern_for_capture,text)
+            chunks = re.split(pattern_for_capture, text)
         else:
             chunks = [text]
-        
+
         for chunk in chunks:
             if not chunk:
                 continue
             if self.special_tokens and chunk in self.special_tokens:
                 final_token_bytes.append(chunk.encode("utf-8"))
             else:
-                pre_token_bytes :list[list[bytes]] = []
+                pre_token_bytes: list[list[bytes]] = []
                 # 使用gpt-2分词规则
                 PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
-                tokens = [match.group(0).encode("utf-8") for match in re.finditer(PAT,chunk)]
+                tokens = [
+                    match.group(0).encode("utf-8") for match in re.finditer(PAT, chunk)
+                ]
                 for token in tokens:
                     token_bytes = [bytes([b]) for b in token]
                     pre_token_bytes.append(token_bytes)
                 for token in pre_token_bytes:
                     final_token_bytes.extend(self.bpe_merge(token))
-        
-        encoded_ids:list[int] = [self.encoder_vocab[token] for token in final_token_bytes]
+
+        encoded_ids: list[int] = [
+            self.encoder_vocab[token] for token in final_token_bytes
+        ]
         return encoded_ids
-    
+
     def encode_iterable(self, iterable: Iterable[str]) -> Iterator[int]:
         for text in iterable:
             yield from self.encode(text)
-    
+
     def decode(self, ids: list[int]) -> str:
-        if len(ids)==0:
+        if len(ids) == 0:
             return ""
         # 还原为bytes
-        merged_tokens:list[bytes] = [self.decoder_vocab.get(id,b'') for id in ids]
-        return b"".join(merged_tokens).decode("utf-8",errors="replace")
-        
-    
-    
-    def bpe_merge(self,token:list[bytes]):
+        merged_tokens: list[bytes] = [self.decoder_vocab.get(id, b"") for id in ids]
+        return b"".join(merged_tokens).decode("utf-8", errors="replace")
+
+    def bpe_merge(self, token: list[bytes]):
         while True:
-            near_bytes_pairs = list(zip(token,token[1:]))
+            near_bytes_pairs = list(zip(token, token[1:]))
             if not near_bytes_pairs:
                 break
             max_bytes_pair = min(
-                near_bytes_pairs,
-                key =lambda p :self.priority_merge.get(p,float("inf")))
+                near_bytes_pairs, key=lambda p: self.priority_merge.get(p, float("inf"))
+            )
             if self.priority_merge.get(max_bytes_pair) is None:
                 break
-            a,b = max_bytes_pair
+            a, b = max_bytes_pair
             new_token = []
             i = 0
             while i < len(token):
                 # 查找第一次出现的目标合并对
-                if i < len(token) - 1 and token[i] == a and token[i+1] == b:
+                if i < len(token) - 1 and token[i] == a and token[i + 1] == b:
                     # 找到了，将合并后的新字节添加到 new_token
                     new_token.append(a + b)
                     # 跳过两个旧字节
@@ -107,9 +113,8 @@ class Tokenizer:
                     # 没有找到，或者不是目标对，直接将当前字节添加到 new_token
                     new_token.append(token[i])
                     i += 1
-            
+
             # 5. 用新生成的 token 列表覆盖旧的，准备进行下一轮合并
             token = new_token
-        
+
         return token
-            

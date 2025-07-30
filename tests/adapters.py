@@ -31,7 +31,7 @@ def run_linear(
     Returns:
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
-    from cs336_basics import linear
+    from cs336_basics.assignment1 import linear
     layer = linear.Linear(d_in,d_out)
     state_to_load = {'W': weights}
     layer.load_state_dict(state_dict=state_to_load)
@@ -56,8 +56,11 @@ def run_embedding(
     Returns:
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
-
-    raise NotImplementedError
+    from cs336_basics.assignment1 import embedding
+    layer = embedding.Embedding(vocab_size,d_model)
+    state_to_add = {"embedding_model":weights}
+    layer.load_state_dict(state_dict=state_to_add)
+    return layer.forward(token_ids=token_ids)
 
 
 def run_swiglu(
@@ -565,7 +568,7 @@ def get_tokenizer(
     Returns:
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
-    from cs336_basics.tokenizer import Tokenizer
+    from cs336_basics.assignment1.tokenizer import Tokenizer
     return Tokenizer(vocab,merges,special_tokens)
 
 
@@ -741,7 +744,7 @@ def run_train_bpe(
     special_tokens: list[str],
     **kwargs,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
-    from cs336_basics.bpe_tokenizer import train_bpe
+    from cs336_basics.assignment1.bpe_tokenizer import train_bpe
     
     # return train_bpe(input_path,vocab_size,special_tokens)
     return run_train_bpe_self(input_path,vocab_size,special_tokens)
