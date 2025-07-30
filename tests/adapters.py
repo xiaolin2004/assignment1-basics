@@ -92,7 +92,15 @@ def run_swiglu(
     # swiglu.w1.weight.data = w1_weight
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
-    raise NotImplementedError
+    from cs336_basics.assignment1 import swi_glu
+    ffn = swi_glu.SwiGLU(d_model=d_model,d_ff=d_ff)
+    dict_to_load = {
+        "W1":w1_weight,
+        "W2":w2_weight,
+        "W3":w3_weight,
+    }
+    ffn.load_state_dict(dict_to_load)
+    return ffn.forward(x=in_features)
 
 
 def run_scaled_dot_product_attention(
