@@ -18,9 +18,10 @@ class SwiGLU(nn.Module):
             self.d_ff = cal_d_ff
         else:
             self.d_ff = d_ff
-        weight_1 = torch.empty([self.d_ff, d_model], device=device, dtype=dtype)
-        weight_2 = torch.empty([d_model, self.d_ff], device=device, dtype=dtype)
-        weight_3 = torch.empty([self.d_ff, d_model], device=device, dtype=dtype)
+        factory_kwargs = {"device": device, "dtype": dtype}
+        weight_1 = torch.empty([self.d_ff, d_model], **factory_kwargs)
+        weight_2 = torch.empty([d_model, self.d_ff], **factory_kwargs)
+        weight_3 = torch.empty([self.d_ff, d_model], **factory_kwargs)
         self.W1 = nn.Parameter(weight_1)
         self.W2 = nn.Parameter(weight_2)
         self.W3 = nn.Parameter(weight_3)
