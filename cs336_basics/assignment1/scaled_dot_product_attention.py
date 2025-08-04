@@ -12,10 +12,10 @@ def scaled_dot_product_attention(
 ) -> torch.Tensor:
     d_k = key.shape[-1]
 
-    qtk = torch.einsum("... qd,... kd->...qk", query, key)
-    score = qtk / math.sqrt(d_k)
+    score = torch.einsum("... qd,... kd->...qk", query, key)
+    score = score / math.sqrt(d_k)
     if mask is not None:
-        #we can do this by taking the pre-softmax values and adding a −∞ in any entry of the mask matrix that is False
+        # we can do this by taking the pre-softmax values and adding a −∞ in any entry of the mask matrix that is False
         score = score.masked_fill(mask=mask == 0, value=-1e9)
     softmax_qtk = softmax.softmax(score, -1)
 

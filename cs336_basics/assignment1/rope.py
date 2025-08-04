@@ -26,13 +26,13 @@ class RoPE(nn.Module):
 
         self.register_buffer("freqs_complex", freqs_complex)
 
-    def forward(self, x: torch.Tensor, token_position: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
         # x: [batch, seq_len, d_k]
         # 将实数转换为复数
         x_complex = torch.view_as_complex(x.reshape(*x.shape[:-1], -1, 2))
 
         # 应用旋转
-        freqs = self.freqs_complex[token_position]
+        freqs = self.freqs_complex[token_positions]
         x_rotated = torch.einsum("...d,...d->...d", x_complex, freqs)
 
         # 转回实数

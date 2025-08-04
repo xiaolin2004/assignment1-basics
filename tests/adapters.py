@@ -32,8 +32,9 @@ def run_linear(
         Float[Tensor, "... d_out"]: The transformed output of your linear module.
     """
     from cs336_basics.assignment1 import linear
-    layer = linear.Linear(d_in,d_out)
-    state_to_load = {'W': weights}
+
+    layer = linear.Linear(d_in, d_out)
+    state_to_load = {"W": weights}
     layer.load_state_dict(state_dict=state_to_load)
     return layer.forward(in_features)
 
@@ -57,8 +58,9 @@ def run_embedding(
         Float[Tensor, "... d_model"]: Batch of embeddings returned by your Embedding layer.
     """
     from cs336_basics.assignment1 import embedding
-    layer = embedding.Embedding(vocab_size,d_model)
-    state_to_add = {"embedding_model":weights}
+
+    layer = embedding.Embedding(vocab_size, d_model)
+    state_to_add = {"embedding_model": weights}
     layer.load_state_dict(state_dict=state_to_add)
     return layer.forward(token_ids=token_ids)
 
@@ -93,11 +95,12 @@ def run_swiglu(
     # swiglu.w2.weight.data = w2_weight
     # swiglu.w3.weight.data = w3_weight
     from cs336_basics.assignment1 import swi_glu
-    ffn = swi_glu.SwiGLU(d_model=d_model,d_ff=d_ff)
+
+    ffn = swi_glu.SwiGLU(d_model=d_model, d_ff=d_ff)
     dict_to_load = {
-        "W1":w1_weight,
-        "W2":w2_weight,
-        "W3":w3_weight,
+        "W1": w1_weight,
+        "W2": w2_weight,
+        "W3": w3_weight,
     }
     ffn.load_state_dict(dict_to_load)
     return ffn.forward(x=in_features)
@@ -122,8 +125,8 @@ def run_scaled_dot_product_attention(
         Float[Tensor, " ... queries d_v"]: Output of SDPA
     """
     from cs336_basics.assignment1 import scaled_dot_product_attention
-    
-    return scaled_dot_product_attention.scaled_dot_product_attention(Q,K,V,mask)
+
+    return scaled_dot_product_attention.scaled_dot_product_attention(Q, K, V, mask)
 
 
 def run_multihead_self_attention(
@@ -157,7 +160,17 @@ def run_multihead_self_attention(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    from cs336_basics.assignment1.multihead_self_attention import MultiHeadSelfAttention
+
+    attention = MultiHeadSelfAttention(d_model=d_model, num_heads=num_heads)
+    dict_to_load = {
+        "Wq": q_proj_weight,
+        "Wk": k_proj_weight,
+        "Wv": v_proj_weight,
+        "Wo": o_proj_weight,
+    }
+    attention.load_state_dict(dict_to_load)
+    return attention.forward(x=in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -197,7 +210,19 @@ def run_multihead_self_attention_with_rope(
         Float[Tensor, " ... sequence_length d_out"]: Tensor with the output of running your optimized, batched multi-headed attention
         implementation with the given QKV projection weights and input features.
     """
-    raise NotImplementedError
+    from cs336_basics.assignment1 import multihead_self_attention_rope
+
+    attention = multihead_self_attention_rope.MultiHeadSelfAttentionRoPE(
+        d_model=d_model, num_heads=num_heads, theta=theta, max_seq_len=max_seq_len
+    )
+    dict_to_load = {
+        "Wq": q_proj_weight,
+        "Wk": k_proj_weight,
+        "Wv": v_proj_weight,
+        "Wo": o_proj_weight,
+    }
+    attention.load_state_dict(dict_to_load,strict=False)
+    return attention.forward(in_features, token_positions=token_positions)
 
 
 def run_rope(
@@ -220,8 +245,9 @@ def run_rope(
         Float[Tensor, " ... sequence_length d_k"]: Tensor with RoPEd input.
     """
     from cs336_basics.assignment1 import rope
-    rope = rope.RoPE(theta=theta,d_k=d_k,max_seq_len=max_seq_len)
-    return rope.forward(in_query_or_key,token_positions)
+
+    rope = rope.RoPE(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
+    return rope.forward(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -399,10 +425,11 @@ def run_rmsnorm(
         Float[Tensor,"... d_model"]: Tensor of with the same shape as `in_features` with the output of running
         RMSNorm of the `in_features`.
     """
-    
+
     from cs336_basics.assignment1 import rms_norm
-    layer = rms_norm.RMSNorm(d_model=d_model,eps=eps)
-    dict_to_load = {"g":weights}
+
+    layer = rms_norm.RMSNorm(d_model=d_model, eps=eps)
+    dict_to_load = {"g": weights}
     layer.load_state_dict(dict_to_load)
     return layer.forward(in_features)
 
@@ -458,8 +485,8 @@ def run_softmax(in_features: Float[Tensor, " ..."], dim: int) -> Float[Tensor, "
         softmax normalizing the specified `dim`.
     """
     from cs336_basics.assignment1 import softmax
-    return softmax.softmax(in_features,dim)
 
+    return softmax.softmax(in_features, dim)
 
 
 def run_cross_entropy(
@@ -480,7 +507,9 @@ def run_cross_entropy(
     raise NotImplementedError
 
 
-def run_gradient_clipping(parameters: Iterable[torch.nn.Parameter], max_l2_norm: float) -> None:
+def run_gradient_clipping(
+    parameters: Iterable[torch.nn.Parameter], max_l2_norm: float
+) -> None:
     """Given a set of parameters, clip their combined gradients to have l2 norm at most max_l2_norm.
 
     Args:
@@ -588,7 +617,8 @@ def get_tokenizer(
         A BPE tokenizer that uses the provided vocab, merges, and special tokens.
     """
     from cs336_basics.assignment1.tokenizer import Tokenizer
-    return Tokenizer(vocab,merges,special_tokens)
+
+    return Tokenizer(vocab, merges, special_tokens)
 
 
 def run_train_bpe_self(
@@ -619,97 +649,108 @@ def run_train_bpe_self(
                 Merges are ordered by order of creation.
     """
     # 初始化词表
-    vocab = {i:bytes([i]) for i in range(256)}
+    vocab = {i: bytes([i]) for i in range(256)}
     # 将特殊token附加到词表末尾
     for tok in special_tokens:
         vocab[len(vocab)] = tok.encode("utf-8")
-        
+
     num_processes = 8
-    with open(input_path,"rb") as f:
-        boundaries = find_chunk_boundaries(f,num_processes,"<|endoftext|>".encode("utf-8"))
-        
-    task_args = [(input_path,start,end,special_tokens) for start ,end in zip(boundaries[:-1],boundaries[1:])]
+    with open(input_path, "rb") as f:
+        boundaries = find_chunk_boundaries(
+            f, num_processes, "<|endoftext|>".encode("utf-8")
+        )
+
+    task_args = [
+        (input_path, start, end, special_tokens)
+        for start, end in zip(boundaries[:-1], boundaries[1:])
+    ]
     with Pool(processes=num_processes) as pool:
-        chunk_results = pool.map(process_chunk,task_args)
-    
-    merges : list[tuple[bytes,bytes]] = []
-    
+        chunk_results = pool.map(process_chunk, task_args)
+
+    merges: list[tuple[bytes, bytes]] = []
+
     # flat
-    pre_token_bytes: list[list[bytes]] = [token for chunk in chunk_results for token in chunk]
-    
+    pre_token_bytes: list[list[bytes]] = [
+        token for chunk in chunk_results for token in chunk
+    ]
+
     # bytes pair freq counts
     counts = defaultdict(int)
     # 用于优化，记录 pair到pre_token_bytes索引的映射，在merge的重新生成阶段
     pair_to_indices = defaultdict(set)
-    
-    for idx,token in enumerate(pre_token_bytes):
-        for i in range(len(token)-1):
-            pair = (token[i],token[i+1])
-            counts[pair] +=1
+
+    for idx, token in enumerate(pre_token_bytes):
+        for i in range(len(token) - 1):
+            pair = (token[i], token[i + 1])
+            counts[pair] += 1
             pair_to_indices[pair].add(idx)
 
     idx = len(vocab)
     while idx < vocab_size:
         if not counts:
             break
-        
-        max_pair :tuple[bytes,bytes] = None
-        max_pair = max(counts,key=lambda p:(counts[p],p))
-                    
+
+        max_pair: tuple[bytes, bytes] = None
+        max_pair = max(counts, key=lambda p: (counts[p], p))
+
         merges.append(max_pair)
-        a,b = max_pair
-        new_token = a+b
-        vocab[idx]  =new_token
-        idx+=1
-        
+        a, b = max_pair
+        new_token = a + b
+        vocab[idx] = new_token
+        idx += 1
+
         affected_indices = pair_to_indices[max_pair].copy()
         for j in affected_indices:
             token = pre_token_bytes[j]
             # 清除所有pair统计
-            for i in range(len(token)-1):
-                old_pair = (token[i],token[i+1])
+            for i in range(len(token) - 1):
+                old_pair = (token[i], token[i + 1])
                 pair_to_indices[old_pair].discard(j)
                 counts[old_pair] -= 1
-                if counts[old_pair]==0:
+                if counts[old_pair] == 0:
                     counts.pop(old_pair)
-                    pair_to_indices.pop(old_pair,None)
+                    pair_to_indices.pop(old_pair, None)
             merged = []
             i = 0
             while i < len(token):
-                if i < len(token) - 1 and token[i] == a and token[i+1] == b:
+                if i < len(token) - 1 and token[i] == a and token[i + 1] == b:
                     merged.append(new_token)
                     i += 2
                 else:
                     merged.append(token[i])
                     i += 1
             pre_token_bytes[j] = merged
-            
+
             token = pre_token_bytes[j]
-            for i in range(len(token)-1):
-                pair = (token[i],token[i+1])
+            for i in range(len(token) - 1):
+                pair = (token[i], token[i + 1])
                 counts[pair] += 1
                 pair_to_indices[pair].add(j)
-    return vocab,merges
-        
-def process_chunk(args: tuple[str|os.PathLike,int,int,list[str]]) -> list[list[bytes]]:
-    input_path,start,end,special_tokens = args
-    with open(input_path,"rb") as f:
-       f.seek(start)
-       chunk = f.read(end-start).decode("utf-8",errors="ignore") 
-       
+    return vocab, merges
+
+
+def process_chunk(
+    args: tuple[str | os.PathLike, int, int, list[str]],
+) -> list[list[bytes]]:
+    input_path, start, end, special_tokens = args
+    with open(input_path, "rb") as f:
+        f.seek(start)
+        chunk = f.read(end - start).decode("utf-8", errors="ignore")
+
     pattern = "|".join(re.escape(tok) for tok in special_tokens)
-    documents = re.split(pattern,chunk)
-    
-    pre_token_bytes :list[list[bytes]] = []
-    
+    documents = re.split(pattern, chunk)
+
+    pre_token_bytes: list[list[bytes]] = []
+
     PAT = r"""'(?:[sdmt]|ll|ve|re)| ?\p{L}+| ?\p{N}+| ?[^\s\p{L}\p{N}]+|\s+(?!\S)|\s+"""
     for doc in documents:
-        tokens = [match.group(0).encode("utf-8") for match in re.finditer(PAT,doc)]
+        tokens = [match.group(0).encode("utf-8") for match in re.finditer(PAT, doc)]
         for token in tokens:
             token_bytes = [bytes([b]) for b in token]
             pre_token_bytes.append(token_bytes)
-            
+
     return pre_token_bytes
+
 
 def find_chunk_boundaries(
     file: BinaryIO,
@@ -720,7 +761,9 @@ def find_chunk_boundaries(
     Chunk the file into parts that can be counted independently.
     May return fewer chunks if the boundaries end up overlapping.
     """
-    assert isinstance(split_special_token, bytes), "Must represent special token as a bytestring"
+    assert isinstance(
+        split_special_token, bytes
+    ), "Must represent special token as a bytestring"
 
     # Get total file size in bytes
     file.seek(0, os.SEEK_END)
@@ -757,6 +800,7 @@ def find_chunk_boundaries(
     # Make sure all boundaries are unique, but might be fewer than desired_num_chunks
     return sorted(set(chunk_boundaries))
 
+
 def run_train_bpe(
     input_path: str | os.PathLike,
     vocab_size: int,
@@ -764,6 +808,6 @@ def run_train_bpe(
     **kwargs,
 ) -> tuple[dict[int, bytes], list[tuple[bytes, bytes]]]:
     from cs336_basics.assignment1.bpe_tokenizer import train_bpe
-    
+
     # return train_bpe(input_path,vocab_size,special_tokens)
-    return run_train_bpe_self(input_path,vocab_size,special_tokens)
+    return run_train_bpe_self(input_path, vocab_size, special_tokens)
