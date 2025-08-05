@@ -36,7 +36,7 @@ def run_linear(
     layer = linear.Linear(d_in, d_out)
     state_to_load = {"W": weights}
     layer.load_state_dict(state_dict=state_to_load)
-    return layer.forward(in_features)
+    return layer(in_features)
 
 
 def run_embedding(
@@ -62,7 +62,7 @@ def run_embedding(
     layer = embedding.Embedding(vocab_size, d_model)
     state_to_add = {"embedding_model": weights}
     layer.load_state_dict(state_dict=state_to_add)
-    return layer.forward(token_ids=token_ids)
+    return layer(token_ids=token_ids)
 
 
 def run_swiglu(
@@ -98,12 +98,12 @@ def run_swiglu(
 
     ffn = swi_glu.SwiGLU(d_model=d_model, d_ff=d_ff)
     dict_to_load = {
-        "W1": w1_weight,
-        "W2": w2_weight,
-        "W3": w3_weight,
+        "w1.weight": w1_weight,
+        "w2.weight": w2_weight,
+        "w3.weight": w3_weight,
     }
     ffn.load_state_dict(dict_to_load)
-    return ffn.forward(x=in_features)
+    return ffn(x=in_features)
 
 
 def run_scaled_dot_product_attention(
@@ -170,7 +170,7 @@ def run_multihead_self_attention(
         "Wo": o_proj_weight,
     }
     attention.load_state_dict(dict_to_load)
-    return attention.forward(x=in_features)
+    return attention(x=in_features)
 
 
 def run_multihead_self_attention_with_rope(
@@ -216,13 +216,13 @@ def run_multihead_self_attention_with_rope(
         d_model=d_model, num_heads=num_heads, theta=theta, max_seq_len=max_seq_len
     )
     dict_to_load = {
-        "Wq": q_proj_weight,
-        "Wk": k_proj_weight,
-        "Wv": v_proj_weight,
-        "Wo": o_proj_weight,
+        "q_proj.weight": q_proj_weight,
+        "k_proj.weight": k_proj_weight,
+        "v_proj.weight": v_proj_weight,
+        "o_proj.weight": o_proj_weight,
     }
-    attention.load_state_dict(dict_to_load,strict=False)
-    return attention.forward(in_features, token_positions=token_positions)
+    attention.load_state_dict(dict_to_load, strict=False)
+    return attention(in_features, token_positions=token_positions)
 
 
 def run_rope(
@@ -247,7 +247,7 @@ def run_rope(
     from cs336_basics.assignment1 import rope
 
     rope = rope.RoPE(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
-    return rope.forward(in_query_or_key, token_positions)
+    return rope(in_query_or_key, token_positions)
 
 
 def run_transformer_block(
@@ -320,7 +320,18 @@ def run_transformer_block(
         Float[Tensor, "batch sequence_length d_model"] Tensor with the output of
         running the Transformer block on the input features while using RoPE.
     """
-    raise NotImplementedError
+
+    from cs336_basics.assignment1 import transformer
+
+    trans = transformer.Transformer(
+        num_heads=num_heads,
+        d_model=d_model,
+        d_ff=d_ff,
+        theta=theta,
+        max_seq_len=max_seq_len,
+    )
+    trans.load_state_dict(weights, strict=False)
+    return trans(in_features)
 
 
 def run_transformer_lm(
@@ -429,9 +440,9 @@ def run_rmsnorm(
     from cs336_basics.assignment1 import rms_norm
 
     layer = rms_norm.RMSNorm(d_model=d_model, eps=eps)
-    dict_to_load = {"g": weights}
+    dict_to_load = {"weight": weights}
     layer.load_state_dict(dict_to_load)
-    return layer.forward(in_features)
+    return layer(in_features)
 
 
 def run_silu(in_features: Float[Tensor, " ..."]) -> Float[Tensor, " ..."]:

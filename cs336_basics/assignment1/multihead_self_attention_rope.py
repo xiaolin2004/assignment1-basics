@@ -23,15 +23,10 @@ class MultiHeadSelfAttentionRoPE(nn.Module):
         self.num_heads = h
         self.d_k = d_k = d_model // h
 
-        self.Wq = nn.Parameter(torch.empty(d_model, d_model))
-        self.Wk = nn.Parameter(torch.empty(d_model, d_model))
-        self.Wv = nn.Parameter(torch.empty(d_model, d_model))
-        self.Wo = nn.Parameter(torch.empty(d_model, d_model))
-
-        nn.init.xavier_uniform_(self.Wq)
-        nn.init.xavier_uniform_(self.Wk)
-        nn.init.xavier_uniform_(self.Wv)
-        nn.init.xavier_uniform_(self.Wo)
+        self.q_proj = nn.Linear(d_model, d_model, bias=False, device=device)
+        self.k_proj = nn.Linear(d_model, d_model, bias=False, device=device)
+        self.v_proj = nn.Linear(d_model, d_model, bias=False, device=device)
+        self.o_proj = nn.Linear(d_model, d_model, bias=False, device=device)
 
         self.rope = RoPE(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
 
@@ -52,14 +47,14 @@ class MultiHeadSelfAttentionRoPE(nn.Module):
             token_positions = torch.arange(s, device=x.device)
 
         # 1. 线性投影
-        q_proj = torch.einsum("dm, bsm -> bsd", self.Wq, x)
-        k_proj = torch.einsum("dm, bsm -> bsd", self.Wk, x)
-        v_proj = torch.einsum("dm, bsm -> bsd", self.Wv, x)
+        q = self.q_proj(x)
+        k = self.k_proj(x)
+        v = self.v_proj(x)
 
         # 2. 拆分多头
-        q = q_proj.view(b, s, h, d_k).permute(0, 2, 1, 3)
-        k = k_proj.view(b, s, h, d_k).permute(0, 2, 1, 3)
-        v = v_proj.view(b, s, h, d_k).permute(0, 2, 1, 3)
+        q = q.view(b, s, h, d_k).permute(0, 2, 1, 3)
+        k = k.view(b, s, h, d_k).permute(0, 2, 1, 3)
+        v = v.view(b, s, h, d_k).permute(0, 2, 1, 3)
 
         # 3. 对每个头的Q和K应用RoPE
         q = self.rope(q.contiguous(), token_positions)
@@ -82,6 +77,6 @@ class MultiHeadSelfAttentionRoPE(nn.Module):
         context = context.permute(0, 2, 1, 3).contiguous().view(b, s, d)
 
         # 9. 最终投影
-        output = torch.einsum("dm, bsm -> bsd", self.Wo, context)
+        output = self.o_proj(context)
 
         return output

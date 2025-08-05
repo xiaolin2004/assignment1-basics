@@ -19,16 +19,13 @@ class SwiGLU(nn.Module):
         else:
             self.d_ff = d_ff
         factory_kwargs = {"device": device, "dtype": dtype}
-        weight_1 = torch.empty([self.d_ff, d_model], **factory_kwargs)
-        weight_2 = torch.empty([d_model, self.d_ff], **factory_kwargs)
-        weight_3 = torch.empty([self.d_ff, d_model], **factory_kwargs)
-        self.W1 = nn.Parameter(weight_1)
-        self.W2 = nn.Parameter(weight_2)
-        self.W3 = nn.Parameter(weight_3)
+        self.w1 = nn.Linear(d_model, self.d_ff, bias=False, **factory_kwargs)
+        self.w2 = nn.Linear(self.d_ff, d_model, bias=False, **factory_kwargs)
+        self.w3 = nn.Linear(d_model, self.d_ff, bias=False, **factory_kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        SiLU = self.SiLU(x @ self.W1.T)
-        return (SiLU * (x @ self.W3.T)) @ self.W2.T
+        SiLU = self.SiLU(self.w1(x))
+        return self.w2(SiLU * self.w3(x))
 
     def SiLU(self, x: torch.Tensor) -> torch.Tensor:
         return x * torch.sigmoid(x)

@@ -13,7 +13,7 @@ class RMSNorm(nn.Module):
     ) -> None:
         super().__init__()
         g = torch.ones(d_model, device=device, dtype=dtype)
-        self.g = nn.Parameter(g)
+        self.weight = nn.Parameter(g)
         self.eps = eps
         self.d_model = d_model
 
@@ -24,5 +24,5 @@ class RMSNorm(nn.Module):
         # 运行速度显著下降
         # rms = torch.sqrt(reduce(x.pow(2),"... d_model -> ... 1","mean") + self.eps)
         rms = torch.sqrt(x.pow(2).mean(dim=-1, keepdim=True) + self.eps)
-        result = (x / rms) * self.g
+        result = (x / rms) * self.weight
         return result.to(in_dtype)
