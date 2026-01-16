@@ -24,8 +24,10 @@ class SwiGLU(nn.Module):
         self.w3 = nn.Linear(d_model, self.d_ff, bias=False, **factory_kwargs)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        SiLU = self.SiLU(self.w1(x))
-        return self.w2(SiLU * self.w3(x))
+        w1_out = torch.einsum("...i, oi -> ...o", x, self.w1.weight)
+        w3_out = torch.einsum("...i, oi -> ...o", x, self.w3.weight)
+        SiLU = self.SiLU(w1_out)
+        return torch.einsum("...i, oi -> ...o", SiLU * w3_out, self.w2.weight)
 
     def SiLU(self, x: torch.Tensor) -> torch.Tensor:
         return x * torch.sigmoid(x)

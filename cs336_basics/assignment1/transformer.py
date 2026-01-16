@@ -17,5 +17,5 @@ class Transformer(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = x + self.attn(self.ln1(x))
-        output = x + self.ffn(self.ln2(h))
+        output = h + self.ffn(self.ln2(h))
         return output

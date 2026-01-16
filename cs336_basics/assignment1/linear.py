@@ -31,4 +31,4 @@ class Linear(nn.Module):
         self.W = nn.Parameter(weight_tensor)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return x @ self.W.T
+        return torch.einsum("...i, oi -> ...o", x, self.W)
