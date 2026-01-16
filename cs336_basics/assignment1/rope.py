@@ -15,10 +15,10 @@ class RoPE(nn.Module):
         assert d_k % 2 == 0, "d_k should be even"
 
         # 创建频率
-        freqs = 1.0 / (theta ** (torch.arange(0, d_k, 2).float() / d_k))
+        freqs = 1.0 / torch.pow(torch.tensor(theta), (torch.arange(0, d_k, 2).float() / d_k))
 
         # 创建位置编码
-        t = torch.arange(max_seq_len, device=device, dtype=torch.float)
+        t = torch.arange(0,max_seq_len,1, device=device, dtype=torch.float)
         freqs = torch.einsum("i,j->ij", t, freqs)  # 外积
 
         # 创建复数形式的旋转
