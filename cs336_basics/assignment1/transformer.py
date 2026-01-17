@@ -1,6 +1,8 @@
+from __future__ import annotations
 from cs336_basics.assignment1 import multihead_self_attention_rope, rms_norm, swi_glu
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float, Int
 
 
 class Transformer(nn.Module):
@@ -15,7 +17,7 @@ class Transformer(nn.Module):
         self.ffn = swi_glu.SwiGLU(d_model=d_model, d_ff=d_ff)
         self.ln2 = rms_norm.RMSNorm(d_model=d_model)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         h = x + self.attn(self.ln1(x))
         output = h + self.ffn(self.ln2(h))
         return output
@@ -42,7 +44,7 @@ class Transformer_lm(nn.Module):
         self.ln_final = rms_norm.RMSNorm(d_model=d_model)
         self.lm_head = nn.Linear(d_model, vocab_size, bias=False)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Int[Tensor, "..."]) -> Float[Tensor, "... vocab_size"]:
         x = self.token_embeddings(x)
         for layer in self.layers:
             x = layer(x)

@@ -1,5 +1,7 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float
 
 
 class SwiGLU(nn.Module):
@@ -23,7 +25,7 @@ class SwiGLU(nn.Module):
         self.w2 = nn.Linear(self.d_ff, d_model, bias=False, **factory_kwargs)
         self.w3 = nn.Linear(d_model, self.d_ff, bias=False, **factory_kwargs)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         w1_out = torch.einsum("...i, oi -> ...o", x, self.w1.weight)
         w3_out = torch.einsum("...i, oi -> ...o", x, self.w3.weight)
         SiLU = self.SiLU(w1_out)

@@ -1,6 +1,8 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
 from einops import reduce
+from jaxtyping import Float
 
 
 class RMSNorm(nn.Module):
@@ -17,7 +19,7 @@ class RMSNorm(nn.Module):
         self.eps = eps
         self.d_model = d_model
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... d_model"]) -> Float[Tensor, "... d_model"]:
         # You should upcast your input to torch.float32 to prevent overflow when you square the input
         in_dtype = x.dtype
         x = x.to(torch.float32)

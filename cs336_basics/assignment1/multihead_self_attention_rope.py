@@ -1,8 +1,10 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
 import math
 from torch.nn import functional as F
 from cs336_basics.assignment1.rope import RoPE
+from jaxtyping import Float, Int
 
 
 class MultiHeadSelfAttentionRoPE(nn.Module):
@@ -31,8 +33,8 @@ class MultiHeadSelfAttentionRoPE(nn.Module):
         self.rope = RoPE(theta=theta, d_k=d_k, max_seq_len=max_seq_len)
 
     def forward(
-        self, x: torch.Tensor, token_positions: torch.Tensor | None = None
-    ) -> torch.Tensor:
+        self, x: Float[Tensor, "batch seq d_model"], token_positions: Int[Tensor, "batch seq"] | None = None
+    ) -> Float[Tensor, "batch seq d_model"]:
         """
         Args:
             x (torch.Tensor): Input tensor, shape: (batch_size, seq_len, d_model)

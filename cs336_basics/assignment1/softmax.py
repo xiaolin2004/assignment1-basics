@@ -1,7 +1,10 @@
+from __future__ import annotations
 import torch
+from torch import Tensor
+from jaxtyping import Float
 
 
-def softmax(x: torch.Tensor, dim: int):
+def softmax(x: Float[Tensor, "..."], dim: int) -> Float[Tensor, "..."]:
 
     max_item = torch.max(x, dim=dim, keepdim=True).values
 

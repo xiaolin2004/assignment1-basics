@@ -1,7 +1,11 @@
+from __future__ import annotations
 import torch
 from torch import nn
 import math
 
+
+from jaxtyping import Float
+from torch import Tensor
 
 class Linear(nn.Module):
 
@@ -30,5 +34,5 @@ class Linear(nn.Module):
         )
         self.W = nn.Parameter(weight_tensor)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... in_features"]) -> Float[Tensor, "... out_features"]:
         return torch.einsum("...i, oi -> ...o", x, self.W)

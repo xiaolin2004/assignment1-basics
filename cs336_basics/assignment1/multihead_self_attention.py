@@ -1,5 +1,7 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float
 import math
 from cs336_basics.assignment1.softmax import softmax
 
@@ -29,7 +31,7 @@ class MultiHeadSelfAttention(nn.Module):
         nn.init.xavier_uniform_(self.Wv)
         nn.init.xavier_uniform_(self.Wo)
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "batch seq d_model"]) -> Float[Tensor, "batch seq d_model"]:
         """
         Args:
             x (torch.Tensor): Input tensor, shape: (batch_size, seq_len, d_model)

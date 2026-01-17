@@ -1,15 +1,17 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float
 from cs336_basics.assignment1 import softmax
 import math
 
 
 def scaled_dot_product_attention(
-    query: torch.Tensor,
-    key: torch.Tensor,
-    value: torch.Tensor,
-    mask: torch.Tensor | None,
-) -> torch.Tensor:
+    query: Float[Tensor, "... qd"],
+    key: Float[Tensor, "... kd"],
+    value: Float[Tensor, "... kv"],
+    mask: Float[Tensor, "..."] | None,
+) -> Float[Tensor, "... qv"]:
     d_k = key.shape[-1]
 
     score = torch.einsum("... qd,... kd->...qk", query, key)

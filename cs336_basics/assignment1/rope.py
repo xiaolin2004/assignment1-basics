@@ -1,5 +1,7 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float, Int
 
 
 class RoPE(nn.Module):
@@ -26,7 +28,7 @@ class RoPE(nn.Module):
 
         self.register_buffer("freqs_complex", freqs_complex)
 
-    def forward(self, x: torch.Tensor, token_positions: torch.Tensor) -> torch.Tensor:
+    def forward(self, x: Float[Tensor, "... seq d_k"], token_positions: Int[Tensor, "... seq"]) -> Float[Tensor, "... seq d_k"]:
         # x: [batch, seq_len, d_k]
         # 将实数转换为复数
         x_complex = torch.view_as_complex(x.reshape(*x.shape[:-1], -1, 2))

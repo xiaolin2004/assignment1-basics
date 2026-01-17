@@ -1,5 +1,7 @@
+from __future__ import annotations
 import torch
-from torch import nn
+from torch import nn, Tensor
+from jaxtyping import Float, Int
 
 
 class Embedding(nn.Module):
@@ -18,5 +20,5 @@ class Embedding(nn.Module):
         nn.init.trunc_normal_(embedding_matrix, mean=0, std=1, a=-3, b=3)
         self.embedding_model = nn.Parameter(embedding_matrix)
 
-    def forward(self, token_ids: torch.Tensor) -> torch.Tensor:
+    def forward(self, token_ids: Int[Tensor, "..."]) -> Float[Tensor, "... d_model"]:
         return self.embedding_model[token_ids]
