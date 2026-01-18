@@ -118,6 +118,7 @@ def main():
             save_interval=args.save_interval,
             checkpoint_pat_prefix=os.path.join(args.checkpoint_dir, "model"),
             wandb_log=args.wandb,
+            log_dir=args.checkpoint_dir,
         )
     except KeyboardInterrupt:
         print("Training broken by user...")

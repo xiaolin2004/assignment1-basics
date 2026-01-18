@@ -55,6 +55,7 @@ def train(
     save_interval: int = 1000,
     checkpoint_pat_prefix: str = "checkpoints/model",
     wandb_log: bool = False,
+    log_dir: str | None = None,
 ):
     model.to(device)
     model.train()
@@ -63,8 +64,23 @@ def train(
     start_iter = 0 
     # (In a real scenario we might load 'start_iter' from a checkpoint if resuming)
 
+    # Setup CSV Logging
+    if log_dir is None:
+        log_dir = os.path.dirname(checkpoint_pat_prefix)
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "log.csv")
+    
+    # Write header if new file
+    if not os.path.exists(log_file) or start_iter == 0:
+        with open(log_file, "w") as f:
+            f.write("step,train_loss,val_loss,lr,time_ms,wallclock_s\n")
+
     t0 = time.time()
+    task_start_time = t0
+    cumulative_time = 0.0 # Should ideally be loaded from checkpoint if resuming
+    
     for iter_num in range(start_iter, num_iters + 1):
+        step_start = time.time()
         
         # 1. Fetch batch
         X, Y = data_loader(train_data, batch_size, context_length, device)
@@ -81,37 +97,52 @@ def train(
         # 4. Backward pass
         loss.backward()
         
-        # 5. Optimizer step (Gradient Clipping is typically done before step, but not strictly requested here yet, 
-        #    but previous helper had it. We can add it if we have the helper import available, 
-        #    but we'll stick to basic optimizer step for now unless requested).
+        # 5. Optimizer step
         optimizer.step()
         optimizer.zero_grad()
         
-        # Logging
-        if iter_num % log_interval == 0:
-            t1 = time.time()
-            dt = t1 - t0
-            t0 = t1
-            # Basic console log
-            print(f"iter {iter_num}: loss {loss.item():.4f}, time {dt*1000:.2f}ms")
-            if wandb_log:
-                import wandb
-                wandb.log({
-                    "iter": iter_num,
-                    "train/loss": loss.item(),
-                    "train/time_ms": dt * 1000,
-                    "lr": optimizer.param_groups[0]['lr']
-                })
-        
+        step_end = time.time()
+        dt = step_end - step_start
+        cumulative_time += dt
+
         # Evaluation
+        val_loss = None
         if iter_num > 0 and iter_num % eval_interval == 0:
+             # Exclude eval time from training wallclock time? usually yes for pure training speed, 
+             # but for "time to convergence" we might include it. 
+             # Let's count it as overhead.
+            t_eval_start = time.time()
             val_loss = estimate_loss(model, val_data, batch_size, context_length, device, eval_iters)
+            t_eval_end = time.time()
+            # cumulative_time += (t_eval_end - t_eval_start) # Optional: include eval time in wallclock
             print(f"step {iter_num}: val loss {val_loss:.4f}")
             if wandb_log:
                 import wandb
                 wandb.log({
                     "iter": iter_num,
                     "val/loss": val_loss,
+                })
+
+        # Logging
+        if iter_num % log_interval == 0:
+            # Basic console log
+            print(f"iter {iter_num}: loss {loss.item():.4f}, time {dt*1000:.2f}ms")
+            
+            lr = optimizer.param_groups[0]['lr']
+            
+            # Write to CSV
+            with open(log_file, "a") as f:
+                val_loss_str = f"{val_loss:.4f}" if val_loss is not None else ""
+                f.write(f"{iter_num},{loss.item():.4f},{val_loss_str},{lr},{dt*1000:.2f},{cumulative_time:.2f}\n")
+
+            if wandb_log:
+                import wandb
+                wandb.log({
+                    "iter": iter_num,
+                    "train/loss": loss.item(),
+                    "train/time_ms": dt * 1000,
+                    "lr": lr,
+                    "wallclock_s": cumulative_time
                 })
 
         # Checkpointing
