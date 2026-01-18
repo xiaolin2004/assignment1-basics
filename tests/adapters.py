@@ -1,4 +1,29 @@
-from __future__ import annotations
+
+def run_generate(
+    model: torch.nn.Module,
+    prompt_tokens: Int[Tensor, " batch_size sequence_length"],
+    max_new_tokens: int,
+    eos_token_id: int | None = None,
+    temperature: float = 1.0,
+    top_p: float = 1.0,
+) -> Int[Tensor, " batch_size sequence_length+max_new_tokens"]:
+    """
+    Given a model, a prompt, and generation parameters, generate valid next tokens.
+
+    Args:
+        model: The language model to use for generation.
+        prompt_tokens (Int[Tensor, "batch_size sequence_length"]): Tensor of shape (batch_size, sequence_length) containing the prompt tokens.
+        max_new_tokens (int): The maximum number of new tokens to generate.
+        eos_token_id (int | None): The ID of the end-of-sequence token. If None, generation will not stop early.
+        temperature (float): The temperature value for sampling.
+        top_p (float): The top-p value for nucleus sampling.
+    
+    Returns:
+        Int[Tensor, "batch_size sequence_length+max_new_tokens"]: Tensor of shape (batch_size, sequence_length + new_tokens) containing the generated tokens.
+    """
+    from cs336_basics.assignment1 import generation
+    return generation.generate(model, prompt_tokens, max_new_tokens, eos_token_id, temperature, top_p)
+
 
 import os
 from typing import IO, Any, BinaryIO
@@ -602,7 +627,8 @@ def run_save_checkpoint(
             we've completed.
         out (str | os.PathLike | BinaryIO | IO[bytes]): Path or file-like object to serialize the model, optimizer, and iteration to.
     """
-    raise NotImplementedError
+    from cs336_basics.assignment1.checkpoint import save_checkpoint
+    save_checkpoint(model, optimizer, iteration, out)
 
 
 def run_load_checkpoint(
@@ -623,7 +649,8 @@ def run_load_checkpoint(
     Returns:
         int: the previously-serialized number of iterations.
     """
-    raise NotImplementedError
+    from cs336_basics.assignment1.checkpoint import load_checkpoint
+    return load_checkpoint(src, model, optimizer)
 
 
 def get_tokenizer(

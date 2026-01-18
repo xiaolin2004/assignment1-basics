@@ -14,6 +14,6 @@ def data_loader(dataset: npt.NDArray, batch_size: int, context_length: int, devi
     inp = dataset[idx[:, None] + offsets[None, :]]          # (B, m)
     tgt = dataset[idx[:, None] + offsets[None, :] + 1]      # (B, m)
 
-    inp = torch.from_numpy(inp).to(device)
-    tgt = torch.from_numpy(tgt).to(device)
+    inp = torch.from_numpy(inp).to(device).long()
+    tgt = torch.from_numpy(tgt).to(device).long()
     return inp, tgt
